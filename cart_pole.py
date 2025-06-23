@@ -1,3 +1,5 @@
+import time
+
 import gymnasium as gym
 import torch
 import torch.nn as nn
@@ -107,4 +109,23 @@ while True:
 
     if np.mean(total_rewards[-100:]) > 195:
         print(f"Solved in {len(total_rewards)} episodes!")
+        break
+
+env_demo = gym.make("CartPole-v1", render_mode='human')
+state, _ = env_demo.reset()
+env_demo.render()
+
+while True:
+    state_v = torch.tensor([state], dtype=torch.float32).to(device)
+    q_vals = model(state_v)
+    _, act_v = torch.max(q_vals, dim=1)
+    action = int(act_v.item())
+
+    next_state, reward, terminated, truncated, _ = env_demo.step(action)
+    done = terminated or truncated
+    env_demo.render()
+
+    state = next_state
+
+    if done:
         break
