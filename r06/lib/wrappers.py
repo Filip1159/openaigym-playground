@@ -120,8 +120,8 @@ class BufferWrapper(gym.ObservationWrapper):
         return self.buffer
 
 
-def make_env(env_name):
-    env = gym.make(env_name)
+def make_env(env_name, render_mode=None):
+    env = gym.make(env_name, render_mode=render_mode, mode=1)
     env = MaxAndSkipEnv(env)
     env = FireResetEnv(env)
     env = ProcessFrame84(env)

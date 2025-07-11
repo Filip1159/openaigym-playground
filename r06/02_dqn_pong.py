@@ -115,7 +115,8 @@ def calc_loss(batch, net, tgt_net, device="cpu"):
     # 1. mamy listę stanów środowiska (jako tensor)
     # 2. wrzucamy tensor do sieci, a ona zwraca Q dla każdej z możliwych akcji
     # 3. wybieramy tę akcję, którą została zapisana w batchu Experience
-    state_action_values = net(states_v).gather(1, actions_v.unsqueeze(-1)).squeeze(-1)
+
+    state_action_values = net(states_v).gather(1, actions_v.type('torch.LongTensor').to(device).unsqueeze(-1)).squeeze(-1)
     with torch.no_grad():
         # weż najlepszą akcję dla next_states_v .........
         next_state_values = tgt_net(next_states_v).max(1)[0]
@@ -128,6 +129,7 @@ def calc_loss(batch, net, tgt_net, device="cpu"):
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = "cpu"
 
     env = wrappers.make_env(DEFAULT_ENV_NAME)
 

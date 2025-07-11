@@ -46,7 +46,7 @@ def select_action(model, state, epsilon, env):
         return int(act_v.item())
 
 # Główna pętla
-env = gym.make("CartPole-v1")
+env = gym.make("CartPole-v1", render_mode='human')
 obs_size = env.observation_space.shape[0]
 n_actions = env.action_space.n
 
@@ -71,6 +71,7 @@ while True:
 
     state = next_state
     episode_reward += reward
+    env.render()
 
     if done:
         state, _ = env.reset()
