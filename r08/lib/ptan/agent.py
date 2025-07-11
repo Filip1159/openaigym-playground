@@ -1,42 +1,11 @@
-"""
-Agent is something which converts states into actions and has state
-"""
 import copy
 import numpy as np
 import torch
-import torch.nn.functional as F
-
-from . import actions
-
-
-class BaseAgent:
-    """
-    Abstract Agent interface
-    """
-    def initial_state(self):
-        """
-        Should create initial empty state for the agent. It will be called for the start of the episode
-        :return: Anything agent want to remember
-        """
-        return None
-
-    def __call__(self, states, agent_states):
-        """
-        Convert observations and states into actions to take
-        :param states: list of environment states to process
-        :param agent_states: list of states with the same length as observations
-        :return: tuple of actions, states
-        """
-        assert isinstance(states, list)
-        assert isinstance(agent_states, list)
-        assert len(agent_states) == len(states)
-
-        raise NotImplementedError
 
 
 def default_states_preprocessor(states):
     """
-    Convert list of states into the form suitable for model. By default we assume Variable
+    Convert list of states into the form suitable for model. By default, we assume Variable
     :param states: list of numpy arrays with states
     :return: Variable
     """
@@ -47,12 +16,7 @@ def default_states_preprocessor(states):
     return torch.tensor(np_states)
 
 
-def float32_preprocessor(states):
-    np_states = np.array(states, dtype=np.float32)
-    return torch.tensor(np_states)
-
-
-class DQNAgent(BaseAgent):
+class DQNAgent:
     """
     DQNAgent is a memoryless DQN agent which calculates Q values
     from the observations and  converts them into the actions using action_selector
@@ -99,68 +63,3 @@ class TargetNet:
         for k, v in state.items():
             tgt_state[k] = tgt_state[k] * alpha + (1 - alpha) * v
         self.target_model.load_state_dict(tgt_state)
-
-
-class PolicyAgent(BaseAgent):
-    """
-    Policy agent gets action probabilities from the model and samples actions from it
-    """
-    # TODO: unify code with DQNAgent, as only action selector is differs.
-    def __init__(self, model, action_selector=actions.ProbabilityActionSelector(), device="cpu",
-                 apply_softmax=False, preprocessor=default_states_preprocessor):
-        self.model = model
-        self.action_selector = action_selector
-        self.device = device
-        self.apply_softmax = apply_softmax
-        self.preprocessor = preprocessor
-
-    def __call__(self, states, agent_states=None):
-        """
-        Return actions from given list of states
-        :param states: list of states
-        :return: list of actions
-        """
-        if agent_states is None:
-            agent_states = [None] * len(states)
-        if self.preprocessor is not None:
-            states = self.preprocessor(states)
-            if torch.is_tensor(states):
-                states = states.to(self.device)
-        probs_v = self.model(states)
-        if self.apply_softmax:
-            probs_v = F.softmax(probs_v, dim=1)
-        probs = probs_v.data.cpu().numpy()
-        actions = self.action_selector(probs)
-        return np.array(actions), agent_states
-
-
-class ActorCriticAgent(BaseAgent):
-    """
-    Policy agent which returns policy and value tensors from observations. Value are stored in agent's state
-    and could be reused for rollouts calculations by ExperienceSource.
-    """
-    def __init__(self, model, action_selector=actions.ProbabilityActionSelector(), device="cpu",
-                 apply_softmax=False, preprocessor=default_states_preprocessor):
-        self.model = model
-        self.action_selector = action_selector
-        self.device = device
-        self.apply_softmax = apply_softmax
-        self.preprocessor = preprocessor
-
-    def __call__(self, states, agent_states=None):
-        """
-        Return actions from given list of states
-        :param states: list of states
-        :return: list of actions
-        """
-        if self.preprocessor is not None:
-            states = self.preprocessor(states)
-            if torch.is_tensor(states):
-                states = states.to(self.device)
-        probs_v, values_v = self.model(states)
-        if self.apply_softmax:
-            probs_v = F.softmax(probs_v, dim=1)
-        probs = probs_v.data.cpu().numpy()
-        actions = self.action_selector(probs)
-        agent_states = values_v.data.squeeze().cpu().numpy().tolist()
-        return np.array(actions), agent_states

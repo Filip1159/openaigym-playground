@@ -20,7 +20,7 @@ class NoopResetEnv(gym.Wrapper):
     def step(self, action):
         return self.env.step(action)
 
-    def reset(self, seed=None, **kwargs):
+    def reset(self, seed=None, options=None):
         """ Do no-op action for a number of steps in [1, noop_max]."""
         self.env.reset()
         if self.override_num_noops is not None:
@@ -29,12 +29,13 @@ class NoopResetEnv(gym.Wrapper):
             noops = np.random.randint(1, self.noop_max + 1)
         assert noops > 0
         obs = None
+        nevermind = None
         for _ in range(noops):
             obs, _, terminated, truncated, _ = self.env.step(0)
             done = terminated or truncated
             if done:
-                obs, _ = self.env.reset()
-        return obs, None
+                obs, nevermind = self.env.reset()
+        return obs, nevermind
 
 
 class FireResetEnv(gym.Wrapper):
@@ -47,7 +48,7 @@ class FireResetEnv(gym.Wrapper):
     def step(self, action):
         return self.env.step(action)
 
-    def reset(self, **kwargs):
+    def reset(self, seed=None, options=None):
         self.env.reset()
         obs, _, terminated, truncated, _ = self.env.step(1)
         done = terminated or truncated
@@ -81,11 +82,12 @@ class EpisodicLifeEnv(gym.Wrapper):
             # for Qbert somtimes we stay in lives == 0 condtion for a few frames
             # so its important to keep lives > 0, so that we only reset once
             # the environment advertises done.
-            done = True
+            terminated = True
+            truncated = True
         self.lives = lives
         return obs, reward, terminated, truncated, info
 
-    def reset(self, **kwargs):
+    def reset(self, seed=None, options=None):
         """Reset only when lives are exhausted.
         This way all states are still reachable even though lives are episodic,
         and the learner need not know about any of this behind-the-scenes.
@@ -125,12 +127,12 @@ class MaxAndSkipEnv(gym.Wrapper):
 
         return max_frame, total_reward, terminated, truncated, info
 
-    def reset(self, **kwargs):
+    def reset(self, seed=None, options=None):
         """Clear past frame buffer and init. to first obs. from inner env."""
         self._obs_buffer.clear()
-        obs, _ = self.env.reset()
+        obs, nevermind = self.env.reset()
         self._obs_buffer.append(obs)
-        return obs, None
+        return obs, nevermind
 
 
 class ProcessFrame84(gym.ObservationWrapper):
@@ -192,7 +194,7 @@ class FrameStack(gym.Wrapper):
         shp = env.observation_space.shape
         self.observation_space = spaces.Box(low=0, high=255, shape=(shp[0]*k, shp[1], shp[2]), dtype=np.float32)
 
-    def reset(self, **kwargs):
+    def reset(self, seed=None, options=None):
         ob, _ = self.env.reset()
         for _ in range(self.k):
             self.frames.append(ob)
@@ -206,13 +208,6 @@ class FrameStack(gym.Wrapper):
     def _get_ob(self):
         assert len(self.frames) == self.k
         return LazyFrames(list(self.frames))
-
-
-class ScaledFloatFrame(gym.ObservationWrapper):
-    def observation(self, obs):
-        # careful! This undoes the memory optimization, use
-        # with smaller replay buffers only.
-        return np.array(obs).astype(np.float32) / 255.0
 
 
 class ImageToPyTorch(gym.ObservationWrapper):
