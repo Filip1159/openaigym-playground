@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-import gymnasium as gym
 import time
 import numpy as np
 
 import torch
 
-from lib import wrappers
-from lib import dqn_model
+from r06 import dqn_model, wrappers
 
 import collections
 
@@ -25,7 +23,7 @@ if __name__ == "__main__":
     env = wrappers.make_env(DEFAULT_ENV_NAME, render_mode='human')
     net = dqn_model.DQN(env.observation_space.shape,
                         env.action_space.n)
-    state = torch.load("trained_model_v4_mode_1/PongNoFrameskip-v4-best_-19.dat", map_location=lambda stg, _: stg)
+    state = torch.load("../resources/r06/trained_model_v4_mode_1/PongNoFrameskip-v4-best_-19.dat", map_location=lambda stg, _: stg)
     net.load_state_dict(state)
 
     state, _ = env.reset()

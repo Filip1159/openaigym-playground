@@ -4,10 +4,15 @@ from datetime import timedelta
 from types import SimpleNamespace
 from typing import Iterable, List
 
-import r08.lib.ptan as ptan
-import r08.lib.ptan.ignite as ptan_ignite
+from r08.igniteutils.EndOfEpisodeHandler import EndOfEpisodeHandler
+from r08.igniteutils.EpisodeFPSHandler import EpisodeFPSHandler
+from r08.igniteutils.EpisodeEvents import EpisodeEvents
+from r08.igniteutils.PeriodicEvents import PeriodicEvents
 from ignite.engine import Engine
 from ignite.metrics import RunningAverage
+
+from r08.experience.ExperienceReplayBuffer import ExperienceReplayBuffer
+from r08.experience.ExperienceSourceFirstLast import ExperienceFirstLast
 
 
 SEED = 123
@@ -30,7 +35,7 @@ HYPERPARAMS = {
 }
 
 
-def unpack_batch(batch: List[ptan.experience.ExperienceFirstLast]):
+def unpack_batch(batch: List[ExperienceFirstLast]):
     states, actions, rewards, dones, last_states = [],[],[],[],[]
     for exp in batch:
         state = np.array(exp.state)
@@ -49,7 +54,7 @@ def unpack_batch(batch: List[ptan.experience.ExperienceFirstLast]):
            np.array(last_states, copy=False)
 
 
-def batch_generator(buffer: ptan.experience.ExperienceReplayBuffer,
+def batch_generator(buffer: ExperienceReplayBuffer,
                     initial: int, batch_size: int):
     buffer.populate(initial)
     while True:
@@ -62,12 +67,12 @@ def setup_ignite(engine: Engine, params: SimpleNamespace,
     # pozbycie si� ostrze�enia o brakuj�cym wska�niku
     warnings.simplefilter("ignore", category=UserWarning)
 
-    handler = ptan_ignite.EndOfEpisodeHandler(
+    handler = EndOfEpisodeHandler(
         exp_source, bound_avg_reward=params.stop_reward)
     handler.attach(engine)
-    ptan_ignite.EpisodeFPSHandler().attach(engine)
+    EpisodeFPSHandler().attach(engine)
 
-    @engine.on(ptan_ignite.EpisodeEvents.EPISODE_COMPLETED)
+    @engine.on(EpisodeEvents.EPISODE_COMPLETED)
     def episode_completed(trainer: Engine):
         passed = trainer.state.metrics.get('time_passed', 0)
         print("Epizod %d: nagroda=%.0f, kroki=%s, "
@@ -77,7 +82,7 @@ def setup_ignite(engine: Engine, params: SimpleNamespace,
             trainer.state.metrics.get('avg_fps', 0),
             timedelta(seconds=int(passed))))
 
-    @engine.on(ptan_ignite.EpisodeEvents.BOUND_REWARD_REACHED)
+    @engine.on(EpisodeEvents.BOUND_REWARD_REACHED)
     def game_solved(trainer: Engine):
         passed = trainer.state.metrics['time_passed']
         print("Gra ukonczona w ci�gu %s sekund, po %d epizodach "
@@ -90,6 +95,6 @@ def setup_ignite(engine: Engine, params: SimpleNamespace,
     run_avg.attach(engine, "avg_loss")
 
     # co 100 iteracji wysy�aj dane do tensorboard 
-    ptan_ignite.PeriodicEvents().attach(engine)
+    PeriodicEvents().attach(engine)
     metrics = ['avg_loss', 'avg_fps']
     metrics.extend(extra_metrics)

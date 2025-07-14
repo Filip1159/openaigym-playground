@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-from lib import wrappers
-from lib import dqn_model
+from r06 import dqn_model, wrappers
 
 import time
 import numpy as np

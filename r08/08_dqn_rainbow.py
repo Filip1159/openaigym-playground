@@ -8,11 +8,11 @@ import torch.optim as optim
 
 from ignite.engine import Engine
 
-from lib import common, dqn_extra, ptan
-from lib.ptan import wrappers as ptan_wrappers
-from lib.ptan import agent as ptan_agent
-from lib.ptan import actions as ptan_actions
-from lib.ptan import experience as ptan_experience
+from r08 import wrappers as ptan_wrappers, common, dqn_extra
+from r08.agent.DQNAgent import DQNAgent
+from r08.agent.TargetNet import TargetNet
+from r08.actions.ArgmaxActionSelector import ArgmaxActionSelector
+from r08.experience.ExperienceSourceFirstLast import ExperienceSourceFirstLast
 
 ale = ALEInterface()
 ale.loadROM(roms.get_rom_path("pong"))
@@ -55,11 +55,11 @@ if __name__ == "__main__":
 
     net = dqn_extra.RainbowDQN(env.observation_space.shape, env.action_space.n).to(device)
 
-    tgt_net = ptan_agent.TargetNet(net)
-    selector = ptan_actions.ArgmaxActionSelector()
-    agent = ptan_agent.DQNAgent(net, selector, device=device)
+    tgt_net = TargetNet(net)
+    selector = ArgmaxActionSelector()
+    agent = DQNAgent(net, selector, device=device)
 
-    exp_source = ptan_experience.ExperienceSourceFirstLast(
+    exp_source = ExperienceSourceFirstLast(
         env, agent, gamma=params.gamma, steps_count=N_STEPS)
     buffer = dqn_extra.PrioReplayBuffer(
         exp_source, params.replay_size, PRIO_REPLAY_ALPHA)
