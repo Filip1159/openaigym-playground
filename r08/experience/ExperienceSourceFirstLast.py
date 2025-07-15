@@ -1,5 +1,6 @@
 # those entries are emitted from ExperienceSourceFirstLast. Reward is discounted over the trajectory piece
 import collections
+from typing import Generator
 
 from r08.experience.ExperienceSource import ExperienceSource
 
@@ -20,8 +21,8 @@ class ExperienceSourceFirstLast(ExperienceSource):
         self.gamma = gamma
         self.steps = steps_count
 
-    def __iter__(self):
-        for exp in super(ExperienceSourceFirstLast, self).__iter__():
+    def __iter__(self) -> Generator[ExperienceFirstLast, None, None]:
+        for exp in super(ExperienceSourceFirstLast, self).__iter__():  # returns at most %steps_count% items
             if exp[-1].done and len(exp) <= self.steps:
                 last_state = None
                 elems = exp

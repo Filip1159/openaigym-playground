@@ -5,9 +5,6 @@ import torch
 from torch import nn as nn
 from torch.nn import functional as F
 
-# parametry bufora
-BETA_START = 0.4
-BETA_FRAMES = 100000
 
 # parametry sieci DQN
 Vmax = 10
@@ -16,10 +13,8 @@ N_ATOMS = 51
 
 
 class NoisyLinear(nn.Linear):
-    def __init__(self, in_features, out_features,
-                 sigma_init=0.017, bias=True):
-        super(NoisyLinear, self).__init__(
-            in_features, out_features, bias=bias)
+    def __init__(self, in_features, out_features, sigma_init=0.017, bias=True):
+        super(NoisyLinear, self).__init__(in_features, out_features, bias=bias)
         w = torch.full((out_features, in_features), sigma_init)
         self.sigma_weight = nn.Parameter(w)
         z = torch.zeros(out_features, in_features)
@@ -41,67 +36,9 @@ class NoisyLinear(nn.Linear):
         bias = self.bias
         if bias is not None:
             self.epsilon_bias.normal_()
-            bias = bias + self.sigma_bias * \
-                   self.epsilon_bias.data
-        v = self.sigma_weight * self.epsilon_weight.data + \
-            self.weight
+            bias = bias + self.sigma_bias * self.epsilon_bias.data
+        v = self.sigma_weight * self.epsilon_weight.data + self.weight
         return F.linear(input, v, bias)
-
-
-class PrioReplayBuffer:
-    def __init__(self, exp_source, buf_size, prob_alpha=0.6):
-        self.exp_source_iter = iter(exp_source)
-        self.prob_alpha = prob_alpha
-        self.capacity = buf_size
-        self.pos = 0
-        self.buffer = []
-        self.priorities = np.zeros(
-            (buf_size, ), dtype=np.float32)
-        self.beta = BETA_START
-
-    def update_beta(self, idx):
-        v = BETA_START + idx * (1.0 - BETA_START) / \
-            BETA_FRAMES
-        self.beta = min(1.0, v)
-        return self.beta
-
-    def __len__(self):
-        return len(self.buffer)
-
-    def populate(self, count):
-        max_prio = self.priorities.max() if \
-            self.buffer else 1.0
-        for _ in range(count):
-            sample = next(self.exp_source_iter)
-            if len(self.buffer) < self.capacity:
-                self.buffer.append(sample)
-            else:
-                self.buffer[self.pos] = sample
-            self.priorities[self.pos] = max_prio
-            self.pos = (self.pos + 1) % self.capacity
-
-    def sample(self, batch_size):
-        if len(self.buffer) == self.capacity:
-            prios = self.priorities
-        else:
-            prios = self.priorities[:self.pos]
-        probs = prios ** self.prob_alpha
-
-        probs /= probs.sum()
-        indices = np.random.choice(len(self.buffer),
-                                   batch_size, p=probs)
-        samples = [self.buffer[idx] for idx in indices]
-        total = len(self.buffer)
-        weights = (total * probs[indices]) ** (-self.beta)
-        weights /= weights.max()
-        return samples, indices, \
-               np.array(weights, dtype=np.float32)
-
-    def update_priorities(self, batch_indices,
-                          batch_priorities):
-        for idx, prio in zip(batch_indices,
-                             batch_priorities):
-            self.priorities[idx] = prio
 
 
 class RainbowDQN(nn.Module):

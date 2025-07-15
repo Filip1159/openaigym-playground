@@ -12,7 +12,9 @@ from r08 import wrappers as ptan_wrappers, common, dqn_extra
 from r08.agent.DQNAgent import DQNAgent
 from r08.agent.TargetNet import TargetNet
 from r08.actions.ArgmaxActionSelector import ArgmaxActionSelector
+from r08.calc_loss_prio import calc_loss_prio
 from r08.experience.ExperienceSourceFirstLast import ExperienceSourceFirstLast
+from r08.experience.PrioReplayBuffer import PrioReplayBuffer
 
 ale = ALEInterface()
 ale.loadROM(roms.get_rom_path("pong"))
@@ -21,26 +23,6 @@ ale.reset_game()
 
 N_STEPS = 4
 PRIO_REPLAY_ALPHA = 0.6
-
-
-def calc_loss_prio(batch, batch_weights, net, tgt_net, gamma, device="cpu"):
-    states, actions, rewards, dones, next_states = common.unpack_batch(batch)
-
-    states_v = torch.tensor(states).to(device)
-    actions_v = torch.tensor(actions).to(device)
-    rewards_v = torch.tensor(rewards).to(device)
-    done_mask = torch.BoolTensor(dones).to(device)
-    batch_weights_v = torch.tensor(batch_weights).to(device)
-
-    state_action_values = net(states_v).gather(1, actions_v.unsqueeze(-1)).squeeze(-1)
-    with torch.no_grad():
-        next_states_v = torch.tensor(next_states).to(device)
-        next_state_values = tgt_net(next_states_v).max(1)[0]
-        next_state_values[done_mask] = 0.0
-        expected_state_action_values = next_state_values.detach() * gamma + rewards_v
-    losses_v = batch_weights_v * (state_action_values - expected_state_action_values) ** 2
-    return losses_v.mean(), (losses_v + 1e-5).data.cpu().numpy()
-
 
 
 if __name__ == "__main__":
@@ -59,10 +41,8 @@ if __name__ == "__main__":
     selector = ArgmaxActionSelector()
     agent = DQNAgent(net, selector, device=device)
 
-    exp_source = ExperienceSourceFirstLast(
-        env, agent, gamma=params.gamma, steps_count=N_STEPS)
-    buffer = dqn_extra.PrioReplayBuffer(
-        exp_source, params.replay_size, PRIO_REPLAY_ALPHA)
+    exp_source = ExperienceSourceFirstLast(env, agent, params.gamma, N_STEPS)
+    buffer = PrioReplayBuffer(exp_source, params.replay_size, PRIO_REPLAY_ALPHA)
     optimizer = optim.Adam(net.parameters(), lr=params.learning_rate)
 
     def process_batch(engine, batch_data):
@@ -83,5 +63,4 @@ if __name__ == "__main__":
 
     engine = Engine(process_batch)
     common.setup_ignite(engine, params, exp_source)
-    engine.run(common.batch_generator(buffer, params.replay_initial,
-                                      params.batch_size))
+    engine.run(common.batch_generator(buffer, params.replay_initial, params.batch_size))

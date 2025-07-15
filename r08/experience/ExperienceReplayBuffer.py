@@ -1,24 +1,24 @@
+from typing import Generator, List, Iterator
+
 import numpy as np
 
-from r08.experience.ExperienceSource import ExperienceSource
+from r08.experience.ExperienceSourceFirstLast import ExperienceSourceFirstLast, ExperienceFirstLast
 
 
 class ExperienceReplayBuffer:
-    def __init__(self, experience_source, buffer_size):
-        assert isinstance(experience_source, (ExperienceSource, type(None)))
-        assert isinstance(buffer_size, int)
-        self.experience_source_iter = None if experience_source is None else iter(experience_source)
-        self.buffer = []
-        self.capacity = buffer_size
-        self.pos = 0
+    def __init__(self, experience_source: ExperienceSourceFirstLast, buffer_size: int):
+        self.experience_source_iter: Generator[ExperienceFirstLast, None, None] = iter(experience_source)
+        self.buffer: List[ExperienceFirstLast] = []  # circular buffer
+        self.capacity: int = buffer_size
+        self.pos: int = 0  # circular index
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.buffer)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[ExperienceFirstLast]:
         return iter(self.buffer)
 
-    def sample(self, batch_size):
+    def sample(self, batch_size) -> List[ExperienceFirstLast]:
         """
         Get one random batch from experience replay
         :param batch_size:
@@ -30,14 +30,7 @@ class ExperienceReplayBuffer:
         keys = np.random.choice(len(self.buffer), batch_size, replace=True)
         return [self.buffer[key] for key in keys]
 
-    def _add(self, sample):
-        if len(self.buffer) < self.capacity:
-            self.buffer.append(sample)
-        else:
-            self.buffer[self.pos] = sample
-        self.pos = (self.pos + 1) % self.capacity
-
-    def populate(self, samples):
+    def populate(self, samples: int) -> None:
         """
         Populates samples into the buffer
         :param samples: how many samples to populate
@@ -45,3 +38,10 @@ class ExperienceReplayBuffer:
         for _ in range(samples):
             entry = next(self.experience_source_iter)
             self._add(entry)
+
+    def _add(self, sample: ExperienceFirstLast) -> None:
+        if len(self.buffer) < self.capacity:
+            self.buffer.append(sample)
+        else:  # buffer full, overwrite
+            self.buffer[self.pos] = sample
+        self.pos = (self.pos + 1) % self.capacity
