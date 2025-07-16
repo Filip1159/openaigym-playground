@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 from r06.ExperienceBuffer import Experience
+from r06.dqn_model import DQN
 
 
 class Agent:
@@ -15,7 +16,7 @@ class Agent:
         self.total_reward = 0.0
 
     @torch.no_grad()  # nie śledź gradientów, bo tu są niepotrzebne, działa szybciej
-    def play_step(self, net, epsilon=0.0, device="cpu"):
+    def play_step(self, net: DQN, epsilon: float = 0.0, device: str = "cpu") -> float:
         done_reward = None
 
         if np.random.random() < epsilon:

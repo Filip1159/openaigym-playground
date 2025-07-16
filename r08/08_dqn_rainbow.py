@@ -8,9 +8,9 @@ import torch.optim as optim
 
 from ignite.engine import Engine
 
-from r08 import wrappers as ptan_wrappers, common, dqn_extra
+from r08 import wrappers as ptan_wrappers, common
 from r08.agent.DQNAgent import DQNAgent
-from r08.agent.TargetNet import TargetNet
+from r08.network.TargetNet import TargetNet
 from r08.actions.ArgmaxActionSelector import ArgmaxActionSelector
 from r08.calc_loss_prio import calc_loss_prio
 from r08.experience.ExperienceSourceFirstLast import ExperienceSourceFirstLast
