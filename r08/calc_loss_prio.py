@@ -1,9 +1,13 @@
+from typing import Tuple
+
+import numpy as np
 import torch
+from torch import Tensor
 
 from r08 import common
 
 
-def calc_loss_prio(batch, batch_weights, net, tgt_net, gamma, device="cpu"):
+def calc_loss_prio(batch, batch_weights, net, tgt_net, gamma, device="cpu") -> Tuple[Tensor, np.ndarray]:
     states, actions, rewards, dones, next_states = common.unpack_batch(batch)
 
     states_v = torch.tensor(states).to(device)

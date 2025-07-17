@@ -1,6 +1,6 @@
 import copy
 
-from r08.network.NoisyLinear import RainbowDQN
+from r08.network.RainbowDQN import RainbowDQN
 
 
 class TargetNet:

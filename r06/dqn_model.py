@@ -19,7 +19,7 @@ class DQN(nn.Module):
             # output (64, 7, 7)
             nn.ReLU()
         )
-        conv_out_size = self._get_conv_out(input_shape)
+        conv_out_size = self._get_conv_out_params_number(input_shape)
         self.dense_net = nn.Sequential(
             nn.Linear(conv_out_size, 512),
             nn.ReLU(),

@@ -54,6 +54,6 @@ class PrioReplayBuffer:
         weights /= weights.max()
         return samples, indices, np.array(weights, dtype=np.float32)
 
-    def update_priorities(self, batch_indices: List[int], batch_priorities: List[float]) -> None:
-        for idx, prio in zip(batch_indices, batch_priorities):
-            self.priorities[idx] = prio
+    def update_priorities(self, batch_indices: np.ndarray, batch_priorities: np.ndarray) -> None:
+        for i, priority in zip(batch_indices, batch_priorities):
+            self.priorities[i] = priority

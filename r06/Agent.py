@@ -16,25 +16,24 @@ class Agent:
         self.total_reward = 0.0
 
     @torch.no_grad()  # nie śledź gradientów, bo tu są niepotrzebne, działa szybciej
-    def play_step(self, net: DQN, epsilon: float = 0.0, device: str = "cpu") -> float:
+    def play_step(self, net: DQN, epsilon: float = 0.0, device: torch.device = "cpu") -> float:
         done_reward = None
 
         if np.random.random() < epsilon:
-            action = self.env.action_space.sample()
+            selected_action = self.env.action_space.sample()
         else:
-            state_a = np.array([self.state], copy=False)
-            state_v = torch.tensor(state_a).to(device)
-            q_vals_v = net(state_v)
-            _, act_v = torch.max(q_vals_v, dim=1)
-            action = int(act_v.item())
+            state = np.array([self.state], copy=False)
+            state = torch.tensor(state).to(device)
+            net_output = net(state)
+            _, best_action = torch.max(net_output, dim=1)
+            selected_action = int(best_action.item())
 
-        # wykonaj krok w �rodowisku
-        new_state, reward, terminated, truncated, _ = self.env.step(action)
+        # wykonaj krok w srodowisku
+        new_state, reward, terminated, truncated, _ = self.env.step(selected_action)
         is_done = terminated or truncated
         self.total_reward += reward
 
-        exp = Experience(self.state, action, reward,
-                         is_done, new_state)
+        exp = Experience(self.state, selected_action, reward, is_done, new_state)
         self.exp_buffer.append(exp)
         self.state = new_state
         if is_done:

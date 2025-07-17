@@ -8,7 +8,7 @@ from r08.network.NoisyLinear import NoisyLinear
 
 
 class RainbowDQN(nn.Module):
-    def __init__(self, input_shape: np.ndarray[None, int], n_actions: int):
+    def __init__(self, input_shape: tuple[int, ...], n_actions: int):
         super(RainbowDQN, self).__init__()
 
         self.conv_net = nn.Sequential(
@@ -19,7 +19,7 @@ class RainbowDQN(nn.Module):
             nn.Conv2d(64, 64, kernel_size=3, stride=1),
             nn.ReLU()
         )
-        conv_out_size = self._get_conv_out(input_shape)
+        conv_out_size = self._get_conv_out_params_number(input_shape)
         # calculates quality of states after performing each action
         self.dense_advantage_net = nn.Sequential(
             NoisyLinear(conv_out_size, 256),
